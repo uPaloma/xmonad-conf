@@ -35,8 +35,11 @@ main = do
   } `additionalKeys`
    [((mod4Mask, xK_q), spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
    ,((mod4Mask, xK_e), spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
+   ,((mod4Mask, xK_m), spawn "xrandr --output eDP1 --brightness 1.0")
+   ,((mod4Mask, xK_n), spawn "xrandr --output eDP1 --brightness 0.3")
    ]
 
    --Custom Keybindings for Volume
+   --Custom Keybinginds for Brightness
 
  
