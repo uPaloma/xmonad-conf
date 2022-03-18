@@ -129,11 +129,12 @@ spawnSelected' lst = gridselect conf lst >>= flip whenJust spawn
                    , gs_font         = myFont
                    }
 
-myAppGrid = [ ("Librewolf", "librewolf")
-                 , ("VSCode", "code-git")
+myAppGrid = [      ("Librewolf", "librewolf")
+                 , ("VSCode", "code")
                  , ("Spotify", "spotify")
-                 , ("LibreOffice Writer", "lowriter")
+                 , ("Wallpaper", "nitrogen")
                  , ("Discord", "discord")
+                 , ("Intellij", "idea")
                  ]
 
 --Makes setting the spacingRaw simpler to write. The spacingRaw module adds a configurable amount of space around windows.
@@ -246,8 +247,11 @@ myLayoutHook = avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts float
                                  ||| threeRow
 
 -- myWorkspaces = [" 1 ", " 2 ", " 3 ", " 4 ", " 5 ", " 6 ", " 7 ", " 8 ", " 9 "]
-myWorkspaces = [" dev ", " chat ", " music ", " sys ", " doc ", " www ", " mus ", " vid ", " gfx "]
+myWorkspaces = [" dev ", " chat ", " music ", " sys ", " www ", " doc ", " misc ", " vid ", " gfx "]
 myWorkspaceIndices = M.fromList $ zipWith (,) myWorkspaces [1..] -- (,) == \x y -> (x,y)
+
+clickable ws = "<action=xdotool key super+"++show i++">"++ws++"</action>"
+    where i = fromJust $ M.lookup ws myWorkspaceIndices
 
 myManageHook :: XMonad.Query (Data.Monoid.Endo WindowSet)
 myManageHook = composeAll
@@ -266,7 +270,8 @@ myManageHook = composeAll
      , className =? "splash"          --> doFloat
      , className =? "toolbar"         --> doFloat
      , className =? "Yad"             --> doCenterFloat
-     , title =? "discord"     --> doShift ( myWorkspaces !! 1 )
+     , title =? "spotify"     --> doShift ( myWorkspaces !! 2 )
+     , title =? "discord"     --> doShift ( myWorkspaces !! 2 )
      , isFullscreen -->  doFullFloat
      ]
 
@@ -282,6 +287,16 @@ myKeys =
         , ("M-<Return>", spawn (myTerminal))
         , ("M-b", spawn (myBrowser))
 
+            -- KB_GROUP Windows navigation
+        , ("M-m", windows W.focusMaster)  -- Move focus to the master window
+        , ("M-j", windows W.focusDown)    -- Move focus to the next window
+        , ("M-k", windows W.focusUp)      -- Move focus to the prev window
+        , ("M-S-m", windows W.swapMaster) -- Swap the focused window and the master window
+        , ("M-S-j", windows W.swapDown)   -- Swap focused window with next window
+        , ("M-S-k", windows W.swapUp)     -- Swap focused window with prev window
+        , ("M-<Backspace>", promote)      -- Moves focused window to master, others maintain order
+
+
         -- KB_GROUP Kill windows
         , ("M-S-c", kill1)     -- Kill the currently focused client
         , ("M-S-a", killAll)   -- Kill all windows on current workspace
@@ -291,21 +306,28 @@ myKeys =
         , ("C-g t", goToSelected $ mygridConfig myColorizer)  -- goto selected window
         , ("C-g b", bringSelected $ mygridConfig myColorizer) -- bring selected window
 
+      --Volume keys
+        , ("M-<F10>", spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
+        , ("M-<F11>", spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
       
-        , ("M-q", spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
-        , ("M-e", spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
-        , ("M-m", spawn "xrandr --output eDP1 --brightness 1.0")
-        , ("M-n", spawn "xrandr --output eDP1 --brightness 0.3")
+      --Multimedia keys
+        , ("<XF86AudioLowerVolume>", spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
+        , ("<XF86AudioRaiseVolume>", spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
+
+      --Shutdown/Reboot
+        , ("M-S-<F10>", spawn "shutdown now")
+        , ("M-S-<F11>", spawn "reboot")
         ]
    
 main :: IO ()
 main = do
     -- Launching three instances of xmobar on their monitors.
-    xmproc0 <- spawnPipe ("xmobar -x 0 $HOME/.xmobarrc")
-    -- the xmonad, ya know...what the WM is named after!
+    xmproc0 <- spawnPipe ("xmobar -x 0 $HOME/.config/.xmobarrc")
+    xmproc1 <- spawnPipe ("xmobar -x 1 $HOME/.config/.xmobarrc")
+   
     xmonad $ ewmh def
         { manageHook         = myManageHook <+> manageDocks
-        , handleEventHook    = docksEventHook <+> fullscreenEventHook
+        , handleEventHook    = docksEventHook 
                                -- Uncomment this line to enable fullscreen support on things like YouTube/Netflix.
                                -- This works perfect on SINGLE monitor systems. On multi-monitor systems,
                                -- it adds a border around the window if screen does not have focus. So, my solution
@@ -320,26 +342,27 @@ main = do
         , focusedBorderColor = myFocusColor
         , logHook = dynamicLogWithPP $ xmobarPP
               -- XMOBAR SETTINGS
-              { ppOutput = \x -> hPutStrLn xmproc0 x   -- xmobar on monitor 1
+              { ppOutput = \x -> hPutStrLn xmproc0 x  -- xmobar on monitor 1
+                              >> hPutStrLn xmproc1 x  -- xmobar on monitor 2
                 -- Current workspace
-              --, ppCurrent = xmobarColor color06 "" . wrap
-                            --("<box type=Bottom width=2 mb=2 color=" ++ color06 ++ ">") "</box>"
+              , ppCurrent = xmobarColor color06 "" . wrap
+                            ("<box type=Bottom width=2 mb=2 color=" ++ color06 ++ ">") "</box>"
                 -- Visible but not current workspace
-              --, ppVisible = xmobarColor color06 "" . clickable
+              , ppVisible = xmobarColor color06 "" . clickable
                 -- Hidden workspace
-              --, ppHidden = xmobarColor color05 "" . wrap
-                          -- ("<box type=Top width=2 mt=2 color=" ++ color05 ++ ">") "</box>" . clickable
+              , ppHidden = xmobarColor color05 "" . wrap
+                            ("<box type=Top width=2 mt=2 color=" ++ color05 ++ ">") "</box>" . clickable
                 -- Hidden workspaces (no windows)
-              --, ppHiddenNoWindows = xmobarColor color05 ""  . clickable
+              , ppHiddenNoWindows = xmobarColor color05 ""  . clickable
                 -- Title of active window
               , ppTitle = xmobarColor color16 "" . shorten 60
                 -- Separator character
-              --, ppSep =  "<fc=" ++ color09 ++ "> <fn=1>|</fn> </fc>"
+              , ppSep =  "<fc=" ++ color09 ++ "> <fn=1>|</fn> </fc>"
                 -- Urgent workspace
-              --, ppUrgent = xmobarColor color02 "" . wrap "!" "!"
+              , ppUrgent = xmobarColor color02 "" . wrap "!" "!"
                 -- Adding # of windows on current workspace to the bar
-              --, ppExtras  = [windowCount]
+              , ppExtras  = [windowCount]
                 -- order of things in xmobar
-              --, ppOrder  = \(ws:l:t:ex) -> [ws,l]++ex++[t]
+              , ppOrder  = \(ws:l:t:ex) -> [ws,l]++ex++[t]
               }
         } `additionalKeysP` myKeys
