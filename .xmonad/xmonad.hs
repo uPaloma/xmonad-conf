@@ -135,6 +135,8 @@ myAppGrid = [      ("Librewolf", "librewolf")
                  , ("Wallpaper", "nitrogen")
                  , ("Discord", "discord")
                  , ("Intellij", "idea")
+                 , ("PDF Viewer", "llpp")
+                 , ("e-Mail", "thunderbird")
                  ]
 
 --Makes setting the spacingRaw simpler to write. The spacingRaw module adds a configurable amount of space around windows.
